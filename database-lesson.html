@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What Is a Database?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Caveat:wght@500;700&family=Lexend:wght@400;600;700&display=swap">
+<style>
+/* Layout: one step fills the screen like a slide. Text size follows both window height and width,
+   so every step fits on 16:9, 16:10 and 3:2 laptops. Portrait/narrow screens scroll normally. */
+:root {
+  --bg: #EAF1FF;
+  --paper: #FFFFFF;
+  --stripe: #F4F8FF;
+  --ink: #141C36;
+  --muted: #3A4666;
+  --line: #C3D0EA;
+  --field: #1E5BE0;  --field-soft: #D6E3FF;
+  --record: #F07A1F; --record-soft: #FFE2C9;
+  --table: #0B8A43;  --table-soft: #CDF2DC;
+  --key: #6B21E8;    --key-soft: #EADCFF;
+  --bad: #D21F3C;    --bad-soft: #FFDCE2;
+  --sun: #FFC933;    --sun-soft: #FFF2C4;
+  --note: #FFFDF3;   --note-rule: #B9CFF2; --note-margin: #F08A9A;
+  --display: "Baloo 2", "Trebuchet MS", "Segoe UI", sans-serif;
+  --body: "Lexend", "Segoe UI", system-ui, sans-serif;
+  --hand: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
+  /* Each step is designed to fit a 54em × 36em screen. */
+  --fs: max(13px, min(calc(100vh / 36), calc(100vw / 54)));
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 var(--fs)/1.45 var(--body); }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: .18em solid var(--key); outline-offset: .12em; }
+
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+
+/* Top bar */
+.top { background: var(--paper); border-bottom: 3px solid var(--line); padding-block: .45em; padding-inline: max(16px, 1em);
+  display: flex; flex-wrap: wrap; gap: .4em 1em; align-items: center; justify-content: space-between; }
+.brand { font-family: var(--display); font-weight: 800; font-size: 1.2em; line-height: 1.05; margin: 0; }
+.brand small { display: block; font-family: var(--body); font-weight: 600; font-size: .48em; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.steps { list-style: none; display: flex; flex-wrap: wrap; gap: .35em; margin: 0; padding: 0; }
+.dot { display: flex; align-items: center; gap: .4em; padding: .2em .75em .2em .25em; border: 2px solid var(--line);
+  background: var(--paper); border-radius: 999px; font-weight: 600; font-size: .72em; cursor: pointer; }
+.dot .n { display: inline-grid; place-items: center; width: 1.7em; height: 1.7em; border-radius: 50%; background: var(--bg); font-weight: 800; }
+.dot:hover { border-color: var(--ink); }
+.dot[aria-current="step"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.dot[aria-current="step"] .n { background: var(--sun); color: var(--ink); }
+.dot.done .n { background: var(--table); color: #fff; }
+
+/* Stage */
+main { overflow: auto; padding-block: .7em .8em; padding-inline: max(16px, 1em); }
+.step { max-width: 72em; height: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: .65em; }
+.fill { flex: 1 1 auto; min-height: 0; }
+.head { display: flex; flex-direction: column; gap: .15em; }
+.eyebrow { margin: 0; font-weight: 700; font-size: .7em; letter-spacing: .1em; text-transform: uppercase; color: var(--field); }
+h2 { font-family: var(--display); font-weight: 800; font-size: 1.75em; line-height: 1.05; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--display); font-weight: 800; font-size: 1.1em; line-height: 1.15; margin: 0; text-wrap: balance; }
+.lead { font-size: 1.05em; max-width: 46em; margin: 0; }
+.lead-row { display: flex; flex-wrap: wrap; gap: .4em 1.2em; align-items: center; }
+p { margin: 0; }
+
+/* Bottom bar */
+.bottom { background: var(--paper); border-top: 3px solid var(--line); padding-block: .45em; padding-inline: max(16px, 1em);
+  display: flex; align-items: center; justify-content: space-between; gap: 1em; }
+.count { font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.btn { font-weight: 700; padding: .38em 1.1em; border-radius: .55em; border: 3px solid var(--ink); background: var(--paper);
+  cursor: pointer; box-shadow: 0 .18em 0 var(--ink); transition: transform .08s, box-shadow .08s; }
+.btn:active:not(:disabled) { transform: translateY(.14em); box-shadow: 0 .04em 0 var(--ink); }
+.btn.primary { background: var(--sun); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+
+.card { background: var(--paper); border: 3px solid var(--line); border-radius: .7em; padding: .7em 1em; }
+.row { display: flex; flex-wrap: wrap; gap: .6em; align-items: center; }
+.panel-label { font-weight: 700; font-size: .72em; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: .3em; }
+
+/* Tables */
+.tbl-wrap { overflow: auto; background: var(--paper); border: 3px solid var(--line); border-radius: .7em; transition: box-shadow .2s, border-color .2s; }
+table.db { border-collapse: collapse; width: 100%; font-size: .92em; line-height: 1.35; font-variant-numeric: tabular-nums; }
+.db th { background: var(--ink); color: #fff; text-align: left; padding: .4em .7em; font-weight: 700; white-space: nowrap; }
+.db td { padding: .32em .7em; border-top: 2px solid var(--line); white-space: nowrap; }
+.db tbody tr:nth-child(even) td { background: var(--stripe); }
+.db thead th { position: sticky; top: 0; z-index: 1; }
+.db th.has-btn { padding: 0; }
+.th-btn { display: flex; align-items: center; gap: .35em; width: 100%; padding: .4em .7em; background: none; border: 0; color: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.th-btn:hover { text-decoration: underline; text-underline-offset: .2em; }
+.arrow { font-size: .75em; opacity: .9; }
+.db .corner { width: 1%; padding: .2em .45em; text-align: center; }
+.all-btn { background: var(--table); color: #fff; border: 0; border-radius: .35em; padding: .1em .5em; font-weight: 800; cursor: pointer; }
+.row-btn { background: var(--record-soft); border: 2px solid var(--record); border-radius: .35em; min-width: 1.9em; padding: 0 .2em; font-weight: 800; cursor: pointer; line-height: 1.3; }
+.rows-click tbody tr { cursor: pointer; }
+.rows-click tbody tr:hover td { background: #FFF1E4; }
+mark { background: var(--sun); color: var(--ink); border-radius: .2em; padding: 0 .05em; }
+.key-ic { width: 1.05em; height: 1.05em; vertical-align: -.15em; margin-left: .3em; }
+.db th.key-col { background: var(--key); }
+.db td.key-col { color: var(--key); font-weight: 700; }
+.empty td { text-align: center; color: var(--muted); padding: 1em; white-space: normal; }
+
+/* Step 1 */
+.s1-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.2em; align-items: start; }
+.s1-grid > div:last-child { min-width: 0; }
+#s1-table .db td, #s1-table .db th { padding-inline: .55em; }
+.notebook { position: relative; background-color: var(--note);
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.5em - 2px), var(--note-rule) calc(1.5em - 2px), var(--note-rule) 1.5em);
+  font-family: var(--hand); font-size: 1.1em; line-height: 1.5em; padding: .5em .8em .5em 2em;
+  border-radius: .2em; box-shadow: 0 .25em 0 rgba(20, 28, 54, .12), 0 0 0 2px var(--line); transform: rotate(-1deg); }
+.notebook::before { content: ""; position: absolute; top: 0; bottom: 0; left: 1.3em; width: 2px; background: var(--note-margin); }
+.notebook p:nth-child(2) { transform: translateX(.4em) rotate(.8deg); }
+.notebook p:nth-child(3) { transform: translateX(-.2em) rotate(-.6deg); }
+.notebook p:nth-child(5) { transform: translateX(.6em) rotate(1.2deg); }
+.notebook p:nth-child(6) { transform: rotate(-1.4deg); }
+.notebook s { color: var(--bad); }
+.problems { color: var(--bad); font-weight: 600; margin-top: .8em; font-size: .95em; }
+.placeholder { border: 3px dashed var(--line); border-radius: .7em; padding: 1.5em 1em; min-height: 12em; width: 27em; max-width: 100%; background: var(--paper);
+  display: flex; flex-direction: column; gap: .9em; align-items: center; justify-content: center; text-align: center; color: var(--muted); }
+.pop { animation: pop .45s ease-out; }
+@keyframes pop { from { transform: scale(.94); opacity: .2; } to { transform: none; opacity: 1; } }
+.define { contain: inline-size; background: var(--sun-soft); border: 3px solid var(--sun); border-radius: .7em; padding: .5em .9em; margin-top: .65em; }
+.define b { font-family: var(--display); font-size: 1.15em; }
+.why-list { margin-top: .65em; }
+.why-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3em; }
+.why-list li { display: flex; gap: .5em; align-items: baseline; }
+.why-list li::before { content: "✓"; flex: none; display: inline-grid; place-items: center; width: 1.3em; height: 1.3em; border-radius: 50%;
+  background: var(--table); color: #fff; font-weight: 800; font-size: .85em; }
+
+/* Step 2 */
+.legend { display: flex; flex-wrap: wrap; gap: .5em; }
+.chip { display: inline-flex; align-items: center; gap: .4em; padding: .2em .7em; border-radius: 999px; font-weight: 600; font-size: .85em; background: var(--paper); border: 2px solid var(--line); }
+.sw { width: 1em; height: 1em; border-radius: .25em; display: inline-block; }
+.db th.sel-field { background: var(--field); }
+.db td.sel-field { background: var(--field-soft) !important; box-shadow: inset .18em 0 0 var(--field), inset -.18em 0 0 var(--field); font-weight: 700; }
+.db tr.sel-record td { background: var(--record-soft) !important; box-shadow: inset 0 .18em 0 var(--record), inset 0 -.18em 0 var(--record); font-weight: 700; }
+.tbl-wrap.sel-table { border-color: var(--table); box-shadow: 0 0 0 .22em var(--table); }
+.tbl-wrap.sel-table td { background: var(--table-soft) !important; }
+.explain { display: flex; flex-wrap: wrap; gap: .4em .9em; align-items: baseline; min-height: 3.4em; padding-block: .55em; }
+.explain p { flex: 1 1 20em; min-width: 0; }
+.tag { font-family: var(--display); font-weight: 800; font-size: 1.05em; letter-spacing: .05em; padding: .02em .65em; border-radius: .35em; }
+.tag.field { background: var(--field); color: #fff; }
+.tag.record { background: var(--record); color: var(--ink); }
+.tag.table { background: var(--table); color: #fff; }
+.tag.key { background: var(--key); color: #fff; }
+.tag.hint { background: var(--bg); color: var(--ink); }
+
+/* Step 3 */
+.s3-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 1.2em; align-items: start; }
+.s3-left { display: flex; flex-direction: column; gap: .7em; }
+.bubble { position: relative; background: var(--paper); border: 3px solid var(--ink); border-radius: .9em; padding: .5em .9em; font-size: 1.05em; margin-bottom: .55em; }
+.bubble::after { content: ""; position: absolute; left: 2em; bottom: -.55em; width: 1em; height: 1em; background: var(--paper);
+  border-right: 3px solid var(--ink); border-bottom: 3px solid var(--ink); transform: rotate(45deg); }
+.who { font-weight: 700; font-size: .7em; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: block; }
+.msg { border-radius: .7em; padding: .5em .9em; border: 3px solid; }
+.msg.err { background: var(--bad-soft); border-color: var(--bad); }
+.msg.ok { background: var(--table-soft); border-color: var(--table); }
+.msg.info { background: var(--paper); border-color: var(--line); color: var(--muted); }
+.db tr.hit-bad td { background: var(--bad-soft) !important; box-shadow: inset 0 .18em 0 var(--bad), inset 0 -.18em 0 var(--bad); }
+.db tr.hit-good td { background: var(--table-soft) !important; box-shadow: inset 0 .18em 0 var(--table), inset 0 -.18em 0 var(--table); font-weight: 700; }
+.rules { background: var(--key-soft); border: 3px solid var(--key); border-radius: .7em; padding: .55em 1em;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .3em 1.6em; }
+.rules > div { display: flex; flex-direction: column; gap: .3em; }
+.footnote { font-size: .8em; color: var(--muted); }
+
+/* Step 4 */
+.split { display: grid; grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr); gap: 1.2em; }
+form { display: flex; flex-direction: column; gap: .5em; align-self: start; }
+form label { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); align-items: center; gap: .6em; font-weight: 700; }
+input, select { width: 100%; padding: .3em .55em; border: 3px solid var(--line); border-radius: .45em; background: var(--paper); font-weight: 400; }
+input:focus, select:focus { border-color: var(--field); }
+input[aria-invalid="true"] { border-color: var(--bad); background: var(--bad-soft); }
+.hint { font-size: .85em; color: var(--muted); }
+.s4-right { display: flex; flex-direction: column; gap: .5em; min-height: 0; }
+.db tr.new td { background: var(--table-soft) !important; font-weight: 700; animation: flash 1.2s ease-out; }
+@keyframes flash { 0% { background: var(--sun); } 100% { background: var(--table-soft); } }
+.tbl-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1em; }
+
+/* Step 5 */
+.search { display: flex; flex-wrap: wrap; gap: .4em 1em; align-items: center; }
+.search label { flex: 1 1 18em; min-width: 0; display: flex; align-items: center; gap: .6em; font-weight: 700; }
+.note { background: var(--sun-soft); border: 3px solid var(--sun); border-radius: .7em; padding: .5em 1em; }
+
+/* Step 6 */
+.quiz { display: flex; flex-direction: column; gap: .8em; max-width: 50em; }
+.qnum { font-weight: 700; color: var(--muted); }
+.qtext { font-size: 1.45em; }
+.opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7em; }
+.opt { display: flex; align-items: center; gap: .65em; text-align: left; padding: .55em .9em; border: 3px solid var(--line);
+  border-radius: .65em; background: var(--paper); font-weight: 600; cursor: pointer; }
+.opt:hover:not(:disabled) { border-color: var(--field); background: var(--field-soft); }
+.opt:disabled { cursor: default; }
+.letter { display: inline-grid; place-items: center; flex: none; width: 1.8em; height: 1.8em; border-radius: .4em; background: var(--bg); font-weight: 800; }
+.opt.right { border-color: var(--table); background: var(--table-soft); }
+.opt.right .letter { background: var(--table); color: #fff; }
+.opt.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.opt.wrong .letter { background: var(--bad); color: #fff; }
+.score { font-family: var(--display); font-weight: 800; font-size: 3.6em; line-height: 1; }
+
+/* Portrait or narrow screens: normal scrolling page, columns stack. */
+@media (max-aspect-ratio: 11/10), (max-width: 760px) {
+  :root { --fs: 16px; }
+  .step { height: auto; }
+  .fill { flex: none; }
+  .tbl-fill { max-height: 24em; }
+  .dot .t { display: none; }
+  .dot { padding: .2em; }
+  .s1-grid, .s3-grid, .split, .rules { grid-template-columns: minmax(0, 1fr); }
+  .opts { grid-template-columns: minmax(0, 1fr); }
+  form label { grid-template-columns: minmax(0, 1fr); gap: .2em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop, .db tr.new td { animation: none; }
+  .btn, .tbl-wrap { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <h1 class="brand"><small>ICT · Class 8 &amp; 9</small>What is a database?</h1>
+    <nav aria-label="Lesson steps">
+      <ol class="steps">
+        <li><button type="button" class="dot" data-go="0"><span class="n">1</span><span class="t">The problem</span></button></li>
+        <li><button type="button" class="dot" data-go="1"><span class="n">2</span><span class="t">Parts of a table</span></button></li>
+        <li><button type="button" class="dot" data-go="2"><span class="n">3</span><span class="t">Primary key</span></button></li>
+        <li><button type="button" class="dot" data-go="3"><span class="n">4</span><span class="t">Try it</span></button></li>
+        <li><button type="button" class="dot" data-go="4"><span class="n">5</span><span class="t">Search &amp; sort</span></button></li>
+        <li><button type="button" class="dot" data-go="5"><span class="n">6</span><span class="t">Quiz</span></button></li>
+      </ol>
+    </nav>
+  </header>
+
+  <main id="stage">
+    <!-- Step 1 -->
+    <section class="step" aria-labelledby="h1s">
+      <div class="head">
+        <p class="eyebrow">Step 1 · The problem</p>
+        <h2 id="h1s">Messy notes are hard to use</h2>
+        <p class="lead">This is student information written in a notebook. Can you find Sadia’s phone number quickly?</p>
+      </div>
+      <div class="s1-grid">
+        <div>
+          <p class="panel-label">Notebook</p>
+          <div class="notebook" aria-label="Messy notebook page">
+            <p>Rahim Uddin 8B roll 12 01711-234567</p>
+            <p>Nusrat Jahan 9A ph 01822345678 r5</p>
+            <p>roll 21 Tanvir (8, A) 01933-456789</p>
+            <p><s>Sadia</s> Sadia 9B r-7 01644-567890</p>
+            <p>Arif — 8A — 01555-678901 — roll 3</p>
+            <p>Rahim Uddin?? 8B 27 01799-112233</p>
+          </div>
+          <p class="problems">Every line has a different order. Some names are short or crossed out.</p>
+          <div class="why-list" id="s1-why" hidden>
+            <p class="panel-label">Why the table is better</p>
+            <ul>
+              <li>Every row looks the same.</li>
+              <li>Same order in every row.</li>
+              <li>Easy to find any phone number.</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <p class="panel-label">Organized table</p>
+          <div id="s1-table">
+            <div class="placeholder">
+              <p>Let’s put the same information into a table.</p>
+              <button type="button" class="btn primary" id="organize">Organize it!</button>
+            </div>
+          </div>
+          <p class="define" id="s1-define" hidden><b>A database</b> is an organized collection of data. It keeps data in tables, so a computer can store, find and change it easily.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 2 -->
+    <section class="step" aria-labelledby="h2s" hidden>
+      <div class="head">
+        <p class="eyebrow">Step 2 · Parts of a table</p>
+        <h2 id="h2s">Field, record and table</h2>
+        <div class="lead-row">
+          <p class="lead">Click a column heading, click a row, or click <b>ALL</b>.</p>
+          <div class="legend">
+            <span class="chip"><span class="sw" style="background:var(--field)"></span>Column = Field</span>
+            <span class="chip"><span class="sw" style="background:var(--record)"></span>Row = Record</span>
+            <span class="chip"><span class="sw" style="background:var(--table)"></span>Everything = Table</span>
+          </div>
+        </div>
+      </div>
+      <div class="card explain" id="s2-explain" aria-live="polite"></div>
+      <div class="tbl-wrap" id="s2-wrap"></div>
+    </section>
+
+    <!-- Step 3 -->
+    <section class="step" aria-labelledby="h3s" hidden>
+      <div class="head">
+        <p class="eyebrow">Step 3 · Primary key</p>
+        <h2 id="h3s">Who is who?</h2>
+        <p class="lead">Two students have the same name. How do we know which one is which?</p>
+      </div>
+      <div class="s3-grid">
+        <div class="s3-left">
+          <div class="bubble"><span class="who">Head teacher</span>“Please send Rahim Uddin to my office.”</div>
+          <div class="row">
+            <button type="button" class="btn" data-find="name">Find by name</button>
+            <button type="button" class="btn" data-find="roll">Find Roll 27</button>
+          </div>
+          <div class="msg info" id="s3-msg" aria-live="polite">Try both buttons. Which one finds only one student?</div>
+        </div>
+        <div class="tbl-wrap" id="s3-wrap"></div>
+      </div>
+      <div class="rules">
+        <div>
+          <p><span class="tag key">PRIMARY KEY</span> A field that is <b>different for every record</b>. Here, it is <b>Roll</b>.</p>
+          <p>No two students share a roll, and it is never empty.</p>
+        </div>
+        <div>
+          <p>Names can repeat. Brothers and sisters may share a phone. So Name and Phone are not good keys.</p>
+          <p class="footnote">Teacher’s note: In many schools, rolls repeat across classes, so a unique Student ID is the real key.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 4 -->
+    <section class="step" aria-labelledby="h4s" hidden>
+      <div class="head">
+        <p class="eyebrow">Step 4 · Try it yourself</p>
+        <h2 id="h4s">Add a new student</h2>
+        <p class="lead">Fill in the form and press <b>Add student</b>. The new record appears in the table.</p>
+      </div>
+      <div class="split fill">
+        <form class="card" id="s4-form" novalidate>
+          <label for="f-name">Name<input id="f-name" type="text" autocomplete="off" placeholder="e.g. Mitu Akter"></label>
+          <label for="f-roll">Roll<input id="f-roll" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 15"></label>
+          <label for="f-class">Class<select id="f-class"><option>8</option><option>9</option></select></label>
+          <label for="f-sec">Section<select id="f-sec"><option>A</option><option>B</option><option>C</option></select></label>
+          <label for="f-phone">Phone<input id="f-phone" type="text" inputmode="tel" autocomplete="off" placeholder="e.g. 01812-345678"></label>
+          <button type="submit" class="btn primary">Add student</button>
+          <p class="hint">Try this: type Roll <b>12</b> and see what happens.</p>
+        </form>
+        <div class="s4-right">
+          <div class="msg info" id="s4-msg" aria-live="polite">Waiting for a new student…</div>
+          <div class="tbl-head"><span class="panel-label" style="margin:0">Student table</span><span class="count" id="s4-count"></span></div>
+          <div class="tbl-wrap fill tbl-fill" id="s4-wrap"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 5 -->
+    <section class="step" aria-labelledby="h5s" hidden>
+      <div class="head">
+        <p class="eyebrow">Step 5 · Searching and sorting</p>
+        <h2 id="h5s">Find and order data fast</h2>
+        <p class="lead">Type in the search box to find a student. Click a column heading to sort.</p>
+      </div>
+      <div class="search">
+        <label for="s5-q">Search<input id="s5-q" type="search" autocomplete="off" placeholder="Type a name, roll or phone…"></label>
+        <span class="count" id="s5-status" aria-live="polite"></span>
+      </div>
+      <div class="tbl-wrap fill tbl-fill" id="s5-wrap"></div>
+      <p class="note"><b>This is what a database does for us.</b> It can search and sort thousands of records in less than a second. In a notebook, this would take a very long time.</p>
+    </section>
+
+    <!-- Step 6 -->
+    <section class="step" aria-labelledby="h6s" hidden>
+      <div class="head">
+        <p class="eyebrow">Step 6 · Quick quiz</p>
+        <h2 id="h6s">Check what you learned</h2>
+      </div>
+      <div class="quiz card" id="quiz" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <footer class="bottom">
+    <button type="button" class="btn" id="back">← Back</button>
+    <span class="count" id="count"></span>
+    <button type="button" class="btn primary" id="next">Next →</button>
+  </footer>
+</div>
+
+<script>
+(function () {
+  const $ = (s, r = document) => r.querySelector(s);
+  const COLS = [
+    { k: 'name', l: 'Name' }, { k: 'roll', l: 'Roll' }, { k: 'cls', l: 'Class' },
+    { k: 'sec', l: 'Section' }, { k: 'phone', l: 'Phone' }
+  ];
+  const WORD = { name: 'name', roll: 'roll number', cls: 'class', sec: 'section', phone: 'phone number' };
+  const KEY = '<svg class="key-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M12 12h10M18 12v4M21.5 12v3" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
+
+  let nextId = 1;
+  const students = [
+    { name: 'Rahim Uddin', roll: 12, cls: 8, sec: 'B', phone: '01711-234567' },
+    { name: 'Nusrat Jahan', roll: 5, cls: 9, sec: 'A', phone: '01822-345678' },
+    { name: 'Tanvir Hasan', roll: 21, cls: 8, sec: 'A', phone: '01933-456789' },
+    { name: 'Sadia Islam', roll: 7, cls: 9, sec: 'B', phone: '01644-567890' },
+    { name: 'Arif Hossain', roll: 3, cls: 8, sec: 'A', phone: '01555-678901' },
+    { name: 'Rahim Uddin', roll: 27, cls: 8, sec: 'B', phone: '01799-112233' }
+  ].map(s => ({ id: nextId++, ...s }));
+  const SEED_COUNT = students.length;
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function hl(text, q) {
+    text = String(text);
+    if (!q) return esc(text);
+    const lo = text.toLowerCase(), ql = q.toLowerCase();
+    let out = '', i = 0, j;
+    while ((j = lo.indexOf(ql, i)) !== -1) {
+      out += esc(text.slice(i, j)) + '<mark>' + esc(text.slice(j, j + q.length)) + '</mark>';
+      i = j + q.length;
+    }
+    return out + esc(text.slice(i));
+  }
+
+  // Builds a student table. Options switch on the features each step needs.
+  function table(rows, o = {}) {
+    const keyCls = k => (o.keyCol && k === 'roll' ? ' key-col' : '');
+    let h = '<table class="db' + (o.rowClick ? ' rows-click' : '') + '"><thead><tr>';
+    if (o.corner) h += '<th class="corner"><button type="button" class="all-btn" data-all aria-label="Select the whole table">ALL</button></th>';
+    COLS.forEach(c => {
+      const label = esc(c.l) + (o.keyCol && c.k === 'roll' ? KEY : '');
+      if (o.colButtons) {
+        h += '<th class="has-btn" data-col="' + c.k + '"><button type="button" class="th-btn">' + label + '</button></th>';
+      } else if (o.sortable) {
+        const d = o.sort && o.sort.k === c.k ? o.sort.d : 0;
+        const aria = d === 1 ? 'ascending' : d === -1 ? 'descending' : 'none';
+        const arrow = d === 1 ? '▲' : d === -1 ? '▼' : '↕';
+        h += '<th class="has-btn" aria-sort="' + aria + '"><button type="button" class="th-btn" data-sort="' + c.k + '">' + label + '<span class="arrow" aria-hidden="true">' + arrow + '</span></button></th>';
+      } else {
+        h += '<th class="' + keyCls(c.k) + '">' + label + '</th>';
+      }
+    });
+    h += '</tr></thead><tbody>';
+    rows.forEach((r, i) => {
+      h += '<tr data-id="' + r.id + '" class="' + (o.rowClass ? o.rowClass(r) : '') + '">';
+      if (o.corner) h += '<td class="corner"><button type="button" class="row-btn" aria-label="Select record ' + (i + 1) + '">' + (i + 1) + '</button></td>';
+      COLS.forEach(c => { h += '<td data-col="' + c.k + '" class="' + keyCls(c.k) + '">' + hl(r[c.k], o.q) + '</td>'; });
+      h += '</tr>';
+    });
+    if (!rows.length && o.emptyText) h += '<tr class="empty"><td colspan="' + COLS.length + '">' + o.emptyText + '</td></tr>';
+    return h + '</tbody></table>';
+  }
+
+  /* Step 1: notebook → table */
+  let organized = false;
+  function renderS1() {
+    if (!organized) return;
+    $('#s1-table').innerHTML = '<div class="tbl-wrap">' + table(students.slice(0, SEED_COUNT)) + '</div>';
+  }
+  $('#organize').addEventListener('click', () => {
+    organized = true;
+    renderS1();
+    $('#s1-table').firstElementChild.classList.add('pop');
+    $('#s1-why').hidden = false;
+    $('#s1-define').hidden = false;
+  });
+
+  /* Step 2: field / record / table */
+  let sel = null;
+  function renderS2() {
+    $('#s2-wrap').innerHTML = table(students, { colButtons: true, corner: true, rowClick: true });
+    applySel();
+  }
+  function applySel() {
+    const wrap = $('#s2-wrap');
+    wrap.classList.toggle('sel-table', !!sel && sel.type === 'table');
+    wrap.querySelectorAll('[data-col]').forEach(el =>
+      el.classList.toggle('sel-field', !!sel && sel.type === 'field' && el.dataset.col === sel.key));
+    wrap.querySelectorAll('tbody tr').forEach(tr =>
+      tr.classList.toggle('sel-record', !!sel && sel.type === 'record' && +tr.dataset.id === sel.key));
+    const ex = $('#s2-explain');
+    if (!sel) {
+      ex.innerHTML = '<span class="tag hint">?</span><p>Click something in the table to learn its name.</p>';
+    } else if (sel.type === 'field') {
+      const c = COLS.find(c => c.k === sel.key);
+      ex.innerHTML = '<span class="tag field">FIELD</span><p><b>' + c.l + '</b> is a field. A field is one kind of information. It is a column. It holds the ' + WORD[c.k] + ' of all ' + students.length + ' students.</p>';
+    } else if (sel.type === 'record') {
+      const s = students.find(s => s.id === sel.key);
+      ex.innerHTML = '<span class="tag record">RECORD</span><p>This row is a record. A record is all the information about one student. This record is about <b>' + esc(s.name) + '</b> (Roll ' + s.roll + '). It has ' + COLS.length + ' fields.</p>';
+    } else {
+      ex.innerHTML = '<span class="tag table">TABLE</span><p>A table is all the records together, in rows and columns. This table has <b>' + students.length + ' records</b> and <b>' + COLS.length + ' fields</b>. A database can have many tables.</p>';
+    }
+  }
+  $('#s2-wrap').addEventListener('click', e => {
+    if (e.target.closest('[data-all]')) { sel = { type: 'table' }; return applySel(); }
+    const th = e.target.closest('th[data-col]');
+    if (th) { sel = { type: 'field', key: th.dataset.col }; return applySel(); }
+    const tr = e.target.closest('tbody tr');
+    if (tr) { sel = { type: 'record', key: +tr.dataset.id }; applySel(); }
+  });
+
+  /* Step 3: primary key */
+  let find = null;
+  function renderS3() {
+    $('#s3-wrap').innerHTML = table(students, {
+      keyCol: true,
+      rowClass: r => (find === 'name' && r.name === 'Rahim Uddin') ? 'hit-bad' : (find === 'roll' && r.roll === 27) ? 'hit-good' : ''
+    });
+    const msg = $('#s3-msg');
+    if (find === 'name') {
+      const n = students.filter(s => s.name === 'Rahim Uddin').length;
+      msg.className = 'msg err';
+      msg.innerHTML = '<b>' + n + ' students found!</b> Which Rahim Uddin do we send? We can’t tell.';
+    } else if (find === 'roll') {
+      const s = students.find(s => s.roll === 27);
+      msg.className = 'msg ok';
+      msg.innerHTML = '<b>1 student found:</b> ' + esc(s.name) + ', Roll 27. No one else has Roll 27.';
+    }
+  }
+  document.querySelectorAll('[data-find]').forEach(b => b.addEventListener('click', () => { find = b.dataset.find; renderS3(); }));
+
+  /* Step 4: add a record */
+  let lastAdded = null;
+  function renderS4() {
+    $('#s4-wrap').innerHTML = table(students, { keyCol: true, rowClass: r => (r.id === lastAdded ? 'new' : '') });
+    $('#s4-count').textContent = students.length + ' records';
+  }
+  $('#s4-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const f = id => $('#' + id);
+    ['f-name', 'f-roll', 'f-phone'].forEach(id => f(id).removeAttribute('aria-invalid'));
+    const name = f('f-name').value.trim();
+    const rollRaw = f('f-roll').value.trim();
+    const phone = f('f-phone').value.trim();
+    let err = null, bad = null;
+    if (!name) { err = 'Please type the student’s name.'; bad = 'f-name'; }
+    else if (!/^\d+$/.test(rollRaw) || +rollRaw < 1) { err = 'Roll must be a whole number, like 15.'; bad = 'f-roll'; }
+    else {
+      const ex = students.find(s => s.roll === +rollRaw);
+      if (ex) { err = 'Roll ' + (+rollRaw) + ' already belongs to ' + esc(ex.name) + '. Roll is our primary key, so it can’t repeat. Please choose a different roll number.'; bad = 'f-roll'; }
+      else if (!phone) { err = 'Please type a phone number.'; bad = 'f-phone'; }
+    }
+    const msg = $('#s4-msg');
+    if (err) {
+      msg.className = 'msg err';
+      msg.innerHTML = '<b>Can’t add this student.</b> ' + err;
+      f(bad).setAttribute('aria-invalid', 'true');
+      f(bad).focus();
+      return;
+    }
+    const s = { id: nextId++, name, roll: +rollRaw, cls: +f('f-class').value, sec: f('f-sec').value, phone };
+    students.push(s);
+    lastAdded = s.id;
+    msg.className = 'msg ok';
+    msg.innerHTML = '<b>Added!</b> ' + esc(name) + ' (Roll ' + s.roll + ') is now a new record in the table.';
+    ['f-name', 'f-roll', 'f-phone'].forEach(id => { f(id).value = ''; });
+    renderS4();
+    const row = $('#s4-wrap tr.new');
+    if (row) row.scrollIntoView({ block: 'nearest' });
+    f('f-name').focus();
+  });
+
+  /* Step 5: search and sort */
+  let q = '', sort = null;
+  function renderS5() {
+    let rows = students.filter(s => !q || COLS.some(c => String(s[c.k]).toLowerCase().includes(q.toLowerCase())));
+    if (sort) {
+      rows = rows.slice().sort((a, b) => {
+        const x = a[sort.k], y = b[sort.k];
+        return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y))) * sort.d;
+      });
+    }
+    $('#s5-wrap').innerHTML = table(rows, { sortable: true, sort, q, emptyText: 'No student matches “' + esc(q) + '”.' });
+    $('#s5-status').textContent = 'Showing ' + rows.length + ' of ' + students.length + ' records';
+  }
+  $('#s5-q').addEventListener('input', e => { q = e.target.value.trim(); renderS5(); });
+  $('#s5-wrap').addEventListener('click', e => {
+    const b = e.target.closest('[data-sort]');
+    if (!b) return;
+    const k = b.dataset.sort;
+    sort = sort && sort.k === k ? { k, d: -sort.d } : { k, d: 1 };
+    renderS5();
+    const again = $('#s5-wrap [data-sort="' + k + '"]');
+    if (again) again.focus();
+  });
+
+  /* Step 6: quiz */
+  const QUIZ = [
+    { q: 'In our table, the Phone column is called a …', opts: ['Record', 'Field', 'Table', 'Primary key'], a: 1,
+      why: 'A column holds one kind of information for every student. That is a field.' },
+    { q: 'All the information about one student (one row) is called a …', opts: ['Record', 'Field', 'Column', 'Database'], a: 0,
+      why: 'A row is a record. It tells us everything about one student.' },
+    { q: 'Which field is the best primary key for our students?', opts: ['Name', 'Section', 'Roll', 'Class'], a: 2,
+      why: 'Names, classes and sections can repeat. Each roll number belongs to only one student.' },
+    { q: 'Why do we keep data in a database instead of a messy notebook?', opts: ['It makes the data colourful', 'We can find, sort and add data quickly and correctly', 'It uses more paper', 'It hides the data from teachers'], a: 1,
+      why: 'Organized data is easy to search, sort and keep correct.' }
+  ];
+  let qi = 0, score = 0, picked = null;
+  function renderQuiz() {
+    const box = $('#quiz');
+    if (qi >= QUIZ.length) {
+      const msg = score === QUIZ.length ? 'Excellent! You know your database basics.' : 'Good try! Go back to any step to review, then try again.';
+      box.innerHTML = '<p class="qnum">Your score</p><p class="score">' + score + ' / ' + QUIZ.length + '</p><p style="font-size:1.15em">' + msg + '</p><div class="row"><button type="button" class="btn primary" data-retry>Try the quiz again</button></div>';
+      return;
+    }
+    const Q = QUIZ[qi];
+    let h = '<p class="qnum">Question ' + (qi + 1) + ' of ' + QUIZ.length + '</p><h3 class="qtext">' + esc(Q.q) + '</h3><div class="opts">';
+    Q.opts.forEach((o, i) => {
+      const cls = picked === null ? '' : i === Q.a ? ' right' : i === picked ? ' wrong' : '';
+      h += '<button type="button" class="opt' + cls + '" data-opt="' + i + '"' + (picked !== null ? ' disabled' : '') + '><span class="letter">' + 'ABCD'[i] + '</span>' + esc(o) + '</button>';
+    });
+    h += '</div>';
+    if (picked !== null) {
+      h += picked === Q.a
+        ? '<p class="msg ok"><b>Correct!</b> ' + esc(Q.why) + '</p>'
+        : '<p class="msg err"><b>Not quite.</b> The answer is <b>' + esc(Q.opts[Q.a]) + '</b>. ' + esc(Q.why) + '</p>';
+      h += '<div class="row"><button type="button" class="btn primary" data-nextq>' + (qi < QUIZ.length - 1 ? 'Next question' : 'See my score') + '</button></div>';
+    }
+    box.innerHTML = h;
+  }
+  $('#quiz').addEventListener('click', e => {
+    const o = e.target.closest('[data-opt]');
+    if (o && picked === null) {
+      picked = +o.dataset.opt;
+      if (picked === QUIZ[qi].a) score++;
+      renderQuiz();
+      const n = $('#quiz [data-nextq]'); if (n) n.focus();
+      return;
+    }
+    if (e.target.closest('[data-nextq]')) { qi++; picked = null; renderQuiz(); const f = $('#quiz button'); if (f) f.focus(); return; }
+    if (e.target.closest('[data-retry]')) { qi = 0; score = 0; picked = null; renderQuiz(); }
+  });
+
+  /* Navigation */
+  const RENDER = [renderS1, renderS2, renderS3, renderS4, renderS5, renderQuiz];
+  const stepEls = Array.from(document.querySelectorAll('.step'));
+  const dots = Array.from(document.querySelectorAll('.dot'));
+  let cur = 0;
+  function go(n) {
+    cur = Math.max(0, Math.min(stepEls.length - 1, n));
+    stepEls.forEach((el, i) => { el.hidden = i !== cur; });
+    dots.forEach((d, i) => {
+      if (i === cur) d.setAttribute('aria-current', 'step'); else d.removeAttribute('aria-current');
+      d.classList.toggle('done', i < cur);
+    });
+    $('#back').disabled = cur === 0;
+    $('#next').disabled = cur === stepEls.length - 1;
+    $('#count').textContent = 'Step ' + (cur + 1) + ' of ' + stepEls.length;
+    RENDER[cur]();
+    $('#stage').scrollTop = 0;
+  }
+  $('#back').addEventListener('click', () => go(cur - 1));
+  $('#next').addEventListener('click', () => go(cur + 1));
+  dots.forEach(d => d.addEventListener('click', () => go(+d.dataset.go)));
+  document.addEventListener('keydown', e => {
+    if (e.target.closest && e.target.closest('input, select, textarea')) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); go(cur + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(cur - 1); }
+  });
+  go(0);
+})();
+</script>
+</body>
+</html>
